@@ -1,0 +1,52 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        id: claude-triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Analiza el issue #${{ github.event.issue.number }} de este repositorio
+            ("${{ github.event.issue.title }}") usando su título y cuerpo, y el código
+            del repo (game.js, index.html, style.css, CLAUDE.md) para entender el contexto.
+
+            Haz dos cosas:
+
+            1. Asigna los labels apropiados al issue usando
+               `gh issue edit ${{ github.event.issue.number }} --add-label "<label>"`.
+               Usa ÚNICAMENTE labels que ya existan en el repo (consúltalos con
+               `gh label list` si es necesario). No crees labels nuevos.
+
+            2. Publica un comentario de diagnóstico en el issue con
+               `gh issue comment ${{ github.event.issue.number }} --body "..."` que incluya:
+               - Resumen breve del problema reportado.
+               - Causa probable, si es identificable a partir del código.
+               - Archivos y/o funciones de game.js/index.html/style.css que probablemente
+                 estén involucrados.
+               - Una sugerencia de enfoque para abordar la solución (sin escribir el código
+                 de la solución en sí, esto es solo diagnóstico para guiar el trabajo futuro).
+
+               Si el issue no es un bug/problema técnico (p. ej. es una pregunta o una
+               solicitud de feature), adapta el comentario en consecuencia: para preguntas,
+               responde brevemente; para features, describe el enfoque de implementación
+               a alto nivel.
+          claude_args: |
+            --allowed-tools "Read,Grep,Glob,Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label list:*)"
