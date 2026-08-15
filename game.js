@@ -40,14 +40,22 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle-checkbox');
+const pauseMenu = document.getElementById('pause-menu');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const controlsToggleBtn = document.getElementById('controls-toggle-btn');
+const pauseControls = document.getElementById('pause-controls');
+const startLevelSelect = document.getElementById('start-level-select');
 
 const GRID_COLORS = { dark: '#22222e', light: '#dcdce6' };
 const BLOCK_HIGHLIGHTS = { dark: 'rgba(255,255,255,0.12)', light: 'rgba(255,255,255,0.35)' };
 const THEME_KEY = 'tetris-theme';
+const START_LEVEL_KEY = 'tetris-start-level';
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let gridColor = GRID_COLORS.dark;
 let blockHighlight = BLOCK_HIGHLIGHTS.dark;
+let startLevel = clampStartLevel(parseInt(localStorage.getItem(START_LEVEL_KEY), 10));
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -114,7 +122,7 @@ function clearLines() {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    dropInterval = computeDropInterval(level);
     updateHUD();
   }
 }
@@ -233,17 +241,29 @@ function endGame() {
   overlay.classList.remove('hidden');
 }
 
+function clampStartLevel(value) {
+  if (!Number.isInteger(value) || value < 1) return 1;
+  if (value > 10) return 10;
+  return value;
+}
+
+function computeDropInterval(forLevel) {
+  return Math.max(100, 1000 - (forLevel - 1) * 90);
+}
+
 function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    pauseMenu.classList.add('hidden');
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    pauseControls.classList.add('hidden');
+    controlsToggleBtn.textContent = 'Ver controles';
+    startLevelSelect.value = String(startLevel);
+    pauseMenu.classList.remove('hidden');
   }
 }
 
@@ -263,26 +283,28 @@ function loop(ts) {
   animId = requestAnimationFrame(loop);
 }
 
-function init() {
+function init(initialLevel = startLevel) {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = clampStartLevel(initialLevel);
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = computeDropInterval(level);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseMenu.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'Escape' && document.activeElement === startLevelSelect) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -306,7 +328,26 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => init());
+
+resumeBtn.addEventListener('click', () => {
+  if (paused) togglePause();
+});
+
+pauseRestartBtn.addEventListener('click', () => {
+  init(startLevel);
+});
+
+controlsToggleBtn.addEventListener('click', () => {
+  const willShow = pauseControls.classList.contains('hidden');
+  pauseControls.classList.toggle('hidden');
+  controlsToggleBtn.textContent = willShow ? 'Ocultar controles' : 'Ver controles';
+});
+
+startLevelSelect.addEventListener('change', () => {
+  startLevel = clampStartLevel(parseInt(startLevelSelect.value, 10));
+  localStorage.setItem(START_LEVEL_KEY, String(startLevel));
+});
 
 function applyTheme(theme) {
   document.body.classList.toggle('light', theme === 'light');
@@ -323,4 +364,5 @@ themeToggle.addEventListener('change', () => {
 
 applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark');
 
-init();
+startLevelSelect.value = String(startLevel);
+init(startLevel);
