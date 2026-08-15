@@ -256,3 +256,34 @@ body.light .theme-toggle-track::after {
   height: 0;
   pointer-events: none;
 }
+
+/* ---- Skin selector ---- */
+.skin-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.skin-btn {
+  background: var(--panel-bg);
+  color: var(--control-fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.skin-btn:hover {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.skin-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
